@@ -49,6 +49,15 @@ export class AuthService {
       refresh_token: refreshToken,
     };
   }
+  async validateRefreshToken(
+    email: string,
+    refreshToken: string
+  ): Promise<boolean | null> {
+    const storedRefreshToken = await this.redisService.getValueFromRedis(
+      `refreshToken:${email}`
+    );
+    return storedRefreshToken === refreshToken;
+  }
   private async generateAccessToken(email: string) {
     const payload: { email: string } = { email };
     return this.jwtService.sign(payload, {
@@ -56,12 +65,15 @@ export class AuthService {
       expiresIn: this.configService.get("JWT_EXPIRATION"),
     });
   }
-  private async generateRefreshToken(email: string) {
+  async generateRefreshToken(email: string) {
     const payload: { email: string } = { email };
     return this.jwtService.sign(payload, {
       secret: this.configService.get("JWT_REFRESH_KEY"),
       expiresIn: this.configService.get("JWT_REFRESH_EXPIRATION_TIME"),
     });
+  }
+  async logout(email: string) {
+    await this.redisService.deleteValueFromRedis(`refreshToken:${email}`);
   }
   private async setRefreshToken(email: string, refreshToken: string) {
     const ttl = this.configService.get("JWT_REFRESH_EXPIRATION_TIME");
